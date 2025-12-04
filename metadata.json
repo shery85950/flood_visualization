@@ -1,0 +1,5 @@
+{
+  "name": "Pakistan Water Insights",
+  "description": "Interactive map dashboard visualizing Indus River System Authority (IRSA) water levels, inflows, and outflows across major dams and barrages in Pakistan.",
+  "requestFramePermissions": []
+}
