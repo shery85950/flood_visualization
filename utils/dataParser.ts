@@ -20,14 +20,11 @@ const getVal = (obj: any, candidates: string[]): number | undefined => {
 };
 
 // Helper to find a station object within the stations dictionary
-// The new scraper returns keys like "INDUS @ TARBELA", old data has "INDUS RIVER SYSTEM AUTHORITY"
 const findStationObj = (stationsDict: any, keywords: string[]): any | undefined => {
   if (!stationsDict) return undefined;
 
-  // Check for the legacy monolith key first if we are processing old data
+  // Check for the legacy monolith key first
   if (stationsDict["INDUS RIVER SYSTEM AUTHORITY"]) {
-    // If we are looking for a specific sub-station, the old data has everything in one object.
-    // So we return that main object, and let getVal find the specific keys.
     return stationsDict["INDUS RIVER SYSTEM AUTHORITY"];
   }
 
@@ -61,20 +58,21 @@ export const parseStationData = (dateStr: string, allData: RawDataEntry[]): Stat
   const rawStations = entry.stations;
   const stations: StationLocation[] = [];
 
-  // --- 1. Tarbela (Indus) ---
+  // ===== DAMS (Flood management - prioritize LEVEL + INFLOW/OUTFLOW) =====
+
+  // 1. TARBELA DAM
   const tarbelaRaw = findStationObj(rawStations, ["TARBELA", "INDUS @ TARBELA"]);
   if (tarbelaRaw) {
-    // Check specific Tarbela key first, then generic LEVEL
     const level = getVal(tarbelaRaw, ["INDUS@TARBELA KABUL@NOWSHERA\nLEVEL", "INDUS @ TARBELA KABUL @ NOWSHERA\nLEVEL", "LEVEL"]);
     const inflow = getVal(tarbelaRaw, ["MEAN INFLOW", "MEANINFLOW"]);
     const outflow = getVal(tarbelaRaw, ["MEAN OUTFLOW", "MEANOUTFLOW"]);
 
-    if (level || inflow) {
+    if (level !== undefined || inflow !== undefined) {
       stations.push({
         id: 'tarbela',
         ...STATION_COORDINATES.TARBELA,
         metrics: [
-          { label: "Level", value: level || 0, unit: "ft", type: 'level' },
+          { label: "Reservoir Level", value: level || 0, unit: "ft", type: 'level' },
           { label: "Mean Inflow", value: inflow || 0, unit: "cusecs", type: 'inflow' },
           { label: "Mean Outflow", value: outflow || 0, unit: "cusecs", type: 'outflow' }
         ],
@@ -83,24 +81,19 @@ export const parseStationData = (dateStr: string, allData: RawDataEntry[]): Stat
     }
   }
 
-  // --- 2. Mangla (Jhelum) ---
+  // 2. MANGLA DAM
   const manglaRaw = findStationObj(rawStations, ["MANGLA", "JHELUM @ MANGLA"]);
-  // Fallback: in old data, everything is in the same object, so findStationObj might return the same big object
-  // We distinguish by looking for "LEVEL" (Mangla) vs Tarbela keys, or assuming getVal priority.
-  // In new scraper, manglaRaw will be a distinct object.
   if (manglaRaw) {
     const level = getVal(manglaRaw, ["LEVEL"]);
-    // In scraped PDF, typically "MEAN INFLOW" exists in the Mangla section. 
-    // In old messy data, it was "MEANU/SDISCHARGE".
     const inflow = getVal(manglaRaw, ["MEAN INFLOW", "MEANU/SDISCHARGE", "MEAN U/S DISCHARGE"]);
     const outflow = getVal(manglaRaw, ["MEAN OUTFLOW", "MEAND/SDISCHARGE", "MEAN D/S DISCHARGE"]);
 
-    if (level) {
+    if (level !== undefined) {
       stations.push({
         id: 'mangla',
         ...STATION_COORDINATES.MANGLA,
         metrics: [
-          { label: "Level", value: level || 0, unit: "ft", type: 'level' },
+          { label: "Reservoir Level", value: level || 0, unit: "ft", type: 'level' },
           { label: "Inflow", value: inflow || 0, unit: "cusecs", type: 'inflow' },
           { label: "Outflow", value: outflow || 0, unit: "cusecs", type: 'outflow' }
         ],
@@ -109,57 +102,160 @@ export const parseStationData = (dateStr: string, allData: RawDataEntry[]): Stat
     }
   }
 
-  // --- 3. Nowshera (Kabul) ---
+  // ===== BARRAGES (Flood forecasting - prioritize UPSTREAM & DOWNSTREAM DISCHARGE) =====
+
+  // 3. CHASHMA BARRAGE
+  const chashmaRaw = findStationObj(rawStations, ["CHASHMA", "CHASMA"]);
+  if (chashmaRaw) {
+    const upDis = getVal(chashmaRaw, ["U/SDISCHARGE", "U/S DISCHARGE"]);
+    const downDis = getVal(chashmaRaw, ["D/SDISCHARGE", "D/S DISCHARGE"]);
+    const level = getVal(chashmaRaw, ["LEVEL"]);
+
+    if (upDis !== undefined || downDis !== undefined) {
+      stations.push({
+        id: 'chashma',
+        ...STATION_COORDINATES.CHASHMA,
+        metrics: [
+          { label: "Upstream Discharge", value: upDis || 0, unit: "cusecs", type: 'inflow' },
+          { label: "Downstream Discharge", value: downDis || 0, unit: "cusecs", type: 'outflow' },
+          { label: "Level", value: level || 0, unit: "ft", type: 'level' }
+        ],
+        historical: getHistoricalData('chashma', allData)
+      });
+    }
+  }
+
+  // 4. TAUNSA BARRAGE
+  const taunsaRaw = findStationObj(rawStations, ["TAUNSA"]);
+  if (taunsaRaw) {
+    const upDis = getVal(taunsaRaw, ["U/SDISCHARGE", "U/S DISCHARGE"]);
+    const downDis = getVal(taunsaRaw, ["D/SDISCHARGE", "D/S DISCHARGE"]);
+
+    if (upDis !== undefined || downDis !== undefined) {
+      stations.push({
+        id: 'taunsa',
+        ...STATION_COORDINATES.TAUNSA,
+        metrics: [
+          { label: "Upstream Discharge", value: upDis || 0, unit: "cusecs", type: 'inflow' },
+          { label: "Downstream Discharge", value: downDis || 0, unit: "cusecs", type: 'outflow' }
+        ],
+        historical: getHistoricalData('taunsa', allData)
+      });
+    }
+  }
+
+  // 5. GUDDU BARRAGE
+  const gudduRaw = findStationObj(rawStations, ["GUDDU"]);
+  if (gudduRaw) {
+    const upDis = getVal(gudduRaw, ["U/SDISCHARGE", "U/S DISCHARGE"]);
+    const downDis = getVal(gudduRaw, ["D/SDISCHARGE", "D/S DISCHARGE"]);
+
+    if (upDis !== undefined || downDis !== undefined) {
+      stations.push({
+        id: 'guddu',
+        ...STATION_COORDINATES.GUDDU,
+        metrics: [
+          { label: "Upstream Discharge", value: upDis || 0, unit: "cusecs", type: 'inflow' },
+          { label: "Downstream Discharge", value: downDis || 0, unit: "cusecs", type: 'outflow' }
+        ],
+        historical: getHistoricalData('guddu', allData)
+      });
+    }
+  }
+
+  // 6. SUKKUR BARRAGE
+  const sukkurRaw = findStationObj(rawStations, ["SUKKUR"]);
+  if (sukkurRaw) {
+    const upDis = getVal(sukkurRaw, ["U/SDISCHARGE", "U/S DISCHARGE"]);
+    const downDis = getVal(sukkurRaw, ["D/SDISCHARGE", "D/S DISCHARGE"]);
+
+    if (upDis !== undefined || downDis !== undefined) {
+      stations.push({
+        id: 'sukkur',
+        ...STATION_COORDINATES.SUKKUR,
+        metrics: [
+          { label: "Upstream Discharge", value: upDis || 0, unit: "cusecs", type: 'inflow' },
+          { label: "Downstream Discharge", value: downDis || 0, unit: "cusecs", type: 'outflow' }
+        ],
+        historical: getHistoricalData('sukkur', allData)
+      });
+    }
+  }
+
+  // 7. KOTRI BARRAGE
+  const kotriRaw = findStationObj(rawStations, ["KOTRI"]);
+  if (kotriRaw) {
+    const upDis = getVal(kotriRaw, ["U/SDISCHARGE", "U/S DISCHARGE"]);
+    const downDis = getVal(kotriRaw, ["D/SDISCHARGE", "D/S DISCHARGE"]);
+
+    if (upDis !== undefined || downDis !== undefined) {
+      stations.push({
+        id: 'kotri',
+        ...STATION_COORDINATES.KOTRI,
+        metrics: [
+          { label: "Upstream Discharge", value: upDis || 0, unit: "cusecs", type: 'inflow' },
+          { label: "Downstream Discharge", value: downDis || 0, unit: "cusecs", type: 'outflow' }
+        ],
+        historical: getHistoricalData('kotri', allData)
+      });
+    }
+  }
+
+  // ===== TRIBUTARY STATIONS (Important for total inflow) =====
+
+  // 8. NOWSHERA (Kabul River)
   const nowsheraRaw = findStationObj(rawStations, ["NOWSHERA", "KABUL @ NOWSHERA"]);
   if (nowsheraRaw) {
     const discharge = getVal(nowsheraRaw, ["MEAN DISCHARGE", "MEANDISCHARGE"]);
-    if (discharge) {
+
+    if (discharge !== undefined) {
       stations.push({
         id: 'nowshera',
         ...STATION_COORDINATES.NOWSHERA,
         metrics: [
-          { label: "Discharge", value: discharge, unit: "cusecs", type: 'discharge' }
+          { label: "Mean Discharge", value: discharge, unit: "cusecs", type: 'discharge' }
         ],
         historical: getHistoricalData('nowshera', allData)
       });
     }
   }
 
-  // --- 4. Panjnad ---
-  const panjnadRaw = findStationObj(rawStations, ["PANJNAD"]);
-  if (panjnadRaw) {
-    const up = getVal(panjnadRaw, ["U/S DISCHARGE", "PANJNAD\nU/SDISCHARGE"]);
-    const down = getVal(panjnadRaw, ["D/S DISCHARGE", "IRSARELEASES\nD/SDISCHARGE"]);
+  // 9. MARALA (Chenab River)
+  const maralaRaw = findStationObj(rawStations, ["MARALA", "CHENAB @ MARALA"]);
+  if (maralaRaw) {
+    const upDis = getVal(maralaRaw, ["MEANU/SDISCHARGE", "MEAN U/S DISCHARGE"]);
+    const downDis = getVal(maralaRaw, ["MEAND/SDISCHARGE", "MEAN D/S DISCHARGE"]);
+    const level = getVal(maralaRaw, ["LEVEL"]);
 
-    if (up || down) {
+    if (upDis !== undefined || downDis !== undefined) {
       stations.push({
-        id: 'panjnad',
-        ...STATION_COORDINATES.PANJNAD,
+        id: 'marala',
+        ...STATION_COORDINATES.MARALA,
         metrics: [
-          { label: "Upstream", value: up || 0, unit: "cusecs", type: 'inflow' },
-          { label: "Downstream", value: down || 0, unit: "cusecs", type: 'outflow' }
+          { label: "Mean Upstream Discharge", value: upDis || 0, unit: "cusecs", type: 'inflow' },
+          { label: "Mean Downstream Discharge", value: downDis || 0, unit: "cusecs", type: 'outflow' },
+          { label: "Level", value: level || 0, unit: "ft", type: 'level' }
         ],
-        historical: getHistoricalData('panjnad', allData)
+        historical: getHistoricalData('marala', allData)
       });
     }
   }
 
-  // --- 5. Chashma (CRBC) ---
-  const chashmaRaw = findStationObj(rawStations, ["CHASMA", "CHASHMA", "CRBC"]);
-  // Sometimes CRBC is inside INDUS @ TARBELA section or standalone. 
-  // If we found a specific Chasma section, good. If not, try the generic one again (old data).
-  const rawForChashma = chashmaRaw || (rawStations["INDUS RIVER SYSTEM AUTHORITY"] ? rawStations["INDUS RIVER SYSTEM AUTHORITY"] : null);
+  // 10. PANJNAD (Confluence Point)
+  const panjnadRaw = findStationObj(rawStations, ["PANJNAD"]);
+  if (panjnadRaw) {
+    const upDis = getVal(panjnadRaw, ["U/SDISCHARGE", "U/S DISCHARGE", "PANJNAD\nU/SDISCHARGE"]);
+    const downDis = getVal(panjnadRaw, ["D/SDISCHARGE", "D/S DISCHARGE", "IRSARELEASES\nD/SDISCHARGE"]);
 
-  if (rawForChashma) {
-    const crbc = getVal(rawForChashma, ["CRBC"]);
-    if (crbc) {
+    if (upDis !== undefined || downDis !== undefined) {
       stations.push({
-        id: 'chashma',
-        ...STATION_COORDINATES.CHASHMA,
+        id: 'panjnad',
+        ...STATION_COORDINATES.PANJNAD,
         metrics: [
-          { label: "CRBC Withdrawal", value: crbc, unit: "cusecs", type: 'outflow' }
+          { label: "Upstream Discharge", value: upDis || 0, unit: "cusecs", type: 'inflow' },
+          { label: "Downstream Discharge", value: downDis || 0, unit: "cusecs", type: 'outflow' }
         ],
-        historical: getHistoricalData('chashma', allData)
+        historical: getHistoricalData('panjnad', allData)
       });
     }
   }
@@ -177,33 +273,52 @@ const getHistoricalData = (stationId: string, allData: RawDataEntry[]) => {
 
     const rawStations = entry.stations;
     let value = 0;
-    let type = 'Level';
+    let type = '';
 
     switch (stationId) {
       case 'tarbela':
         const t = findStationObj(rawStations, ["TARBELA", "INDUS @ TARBELA"]);
-        value = getVal(t, ["INDUS@TARBELA KABUL@NOWSHERA\nLEVEL", "INDUS @ TARBELA KABUL @ NOWSHERA\nLEVEL", "LEVEL"]) || 0;
+        value = getVal(t, ["INDUS@TARBELA KABUL@NOWSHERA\nLEVEL", "LEVEL"]) || 0;
         type = 'Level';
         break;
+
       case 'mangla':
         const m = findStationObj(rawStations, ["MANGLA", "JHELUM @ MANGLA"]);
         value = getVal(m, ["LEVEL"]) || 0;
         type = 'Level';
         break;
+
+      case 'chashma':
+        const ch = findStationObj(rawStations, ["CHASHMA", "CHASMA"]);
+        value = getVal(ch, ["U/SDISCHARGE", "U/S DISCHARGE"]) || 0;
+        type = 'Inflow';
+        break;
+
+      case 'taunsa':
+      case 'guddu':
+      case 'sukkur':
+      case 'kotri':
+        const b = findStationObj(rawStations, [stationId.toUpperCase()]);
+        value = getVal(b, ["D/SDISCHARGE", "D/S DISCHARGE"]) || 0;
+        type = 'Downstream';
+        break;
+
       case 'nowshera':
         const n = findStationObj(rawStations, ["NOWSHERA", "KABUL @ NOWSHERA"]);
         value = getVal(n, ["MEAN DISCHARGE", "MEANDISCHARGE"]) || 0;
-        type = 'Flow';
+        type = 'Discharge';
         break;
-      case 'panjnad':
-        const p = findStationObj(rawStations, ["PANJNAD"]);
-        value = getVal(p, ["U/S DISCHARGE", "PANJNAD\nU/SDISCHARGE"]) || 0;
+
+      case 'marala':
+        const ma = findStationObj(rawStations, ["MARALA", "CHENAB @ MARALA"]);
+        value = getVal(ma, ["MEANU/SDISCHARGE", "MEAN U/S DISCHARGE"]) || 0;
         type = 'Inflow';
         break;
-      case 'chashma':
-        const c = findStationObj(rawStations, ["CHASMA", "CHASHMA", "CRBC"]) || rawStations["INDUS RIVER SYSTEM AUTHORITY"];
-        value = getVal(c, ["CRBC"]) || 0;
-        type = 'Withdrawal';
+
+      case 'panjnad':
+        const p = findStationObj(rawStations, ["PANJNAD"]);
+        value = getVal(p, ["U/SDISCHARGE", "U/S DISCHARGE", "PANJNAD\nU/SDISCHARGE"]) || 0;
+        type = 'Inflow';
         break;
     }
 
