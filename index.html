@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -14,30 +13,69 @@
       margin: 0;
       overflow: hidden;
     }
-
     /* Custom scrollbar for sidebar */
     ::-webkit-scrollbar {
       width: 6px;
     }
-
     ::-webkit-scrollbar-track {
       background: #f1f1f1;
     }
-
     ::-webkit-scrollbar-thumb {
       background: #cbd5e1;
       border-radius: 3px;
     }
-
     ::-webkit-scrollbar-thumb:hover {
       background: #94a3b8;
     }
+    
+    /* Back Button Styles */
+    .back-button {
+      position: fixed;
+      bottom: 24px;
+      left: 24px;
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      padding: 10px 16px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      text-decoration: none;
+      color: #374151;
+      font-weight: 500;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      border: 1px solid #e5e7eb;
+    }
+    
+    .back-button:hover {
+      background: #f3f4f6;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      transform: translateY(-2px);
+    }
+    
+    .back-button:active {
+      transform: translateY(0);
+    }
+    
+    .back-button svg {
+      width: 18px;
+      height: 18px;
+    }
   </style>
 </head>
-
 <body>
   <div id="root"></div>
+  
+  <!-- Back Button -->
+  <a href="https://flood-forecast-2-frontend.vercel.app/" class="back-button">
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+    </svg>
+    Back
+  </a>
+
   <script type="module" src="/index.tsx"></script>
 </body>
-
-</html>
+</html>s
