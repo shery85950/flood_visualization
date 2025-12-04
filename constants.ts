@@ -1,12 +1,81 @@
 import { RawDataEntry } from "./types";
 
 export const STATION_COORDINATES = {
-  TARBELA: { lat: 34.0858, lng: 72.6989, name: "Tarbela Dam", river: "Indus" },
-  MANGLA: { lat: 33.1485, lng: 73.6409, name: "Mangla Dam", river: "Jhelum" },
-  NOWSHERA: { lat: 34.0155, lng: 71.9747, name: "Nowshera", river: "Kabul" },
-  PANJNAD: { lat: 29.3444, lng: 71.0258, name: "Panjnad Headworks", river: "Panjnad" },
-  // Adding Chashma approximately based on CRBC presence in data
-  CHASHMA: { lat: 32.4338, lng: 71.3653, name: "Chashma Barrage", river: "Indus" }
+  // ===== DAMS (Storage & Flow Regulation) =====
+  TARBELA: { 
+    lat: 34.0858, 
+    lng: 72.6989, 
+    name: "Tarbela Dam", 
+    river: "Indus",
+    type: "dam"
+  },
+  MANGLA: { 
+    lat: 33.1485, 
+    lng: 73.6409, 
+    name: "Mangla Dam", 
+    river: "Jhelum",
+    type: "dam"
+  },
+  
+  // ===== BARRAGES (Flood Risk Points - Indus Main Stream) =====
+  CHASHMA: { 
+    lat: 32.4338, 
+    lng: 71.3653, 
+    name: "Chashma Barrage", 
+    river: "Indus",
+    type: "barrage"
+  },
+  TAUNSA: { 
+    lat: 29.95, 
+    lng: 70.18, 
+    name: "Taunsa Barrage", 
+    river: "Indus",
+    type: "barrage"
+  },
+  GUDDU: { 
+    lat: 28.42, 
+    lng: 69.71, 
+    name: "Guddu Barrage", 
+    river: "Indus",
+    type: "barrage"
+  },
+  SUKKUR: { 
+    lat: 27.71, 
+    lng: 68.86, 
+    name: "Sukkur Barrage", 
+    river: "Indus",
+    type: "barrage"
+  },
+  KOTRI: { 
+    lat: 25.37, 
+    lng: 68.30, 
+    name: "Kotri Barrage", 
+    river: "Indus",
+    type: "barrage"
+  },
+  
+  // ===== TRIBUTARY STATIONS (Important for Total Inflow) =====
+  NOWSHERA: { 
+    lat: 34.0155, 
+    lng: 71.9747, 
+    name: "Nowshera", 
+    river: "Kabul",
+    type: "station"
+  },
+  MARALA: { 
+    lat: 32.08, 
+    lng: 74.55, 
+    name: "Marala Headworks", 
+    river: "Chenab",
+    type: "headworks"
+  },
+  PANJNAD: { 
+    lat: 29.3444, 
+    lng: 71.0258, 
+    name: "Panjnad Headworks", 
+    river: "Panjnad",
+    type: "headworks"
+  }
 };
 
 export const RAW_DATA: RawDataEntry[] = [
